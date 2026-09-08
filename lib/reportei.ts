@@ -107,16 +107,23 @@ async function getCampaignsCatalogEntry(): Promise<CatalogEntry> {
 }
 
 /**
- * A resposta de POST /metrics/get-data nunca foi observada com linhas reais
- * (a conta não rodou nenhuma campanha ainda) - o envelope exato ao redor do
- * array de linhas é uma suposição razoável, não um contrato confirmado.
- * Por isso a busca é tolerante a formato: procura o primeiro array cujo
- * primeiro item "parece" uma linha posicional ([nome, resultados{}, ...]),
- * ou uma chave "rows". Quando a veiculação começar e vier a primeira
- * resposta com dado de verdade, conferir contra esta função.
+ * Confirmado contra a API real: quando não há dados no período, a resposta é
+ *   { "fb_ads:insights_by_campaign": { "warning": "There is no data for the
+ *   selected period" } }
+ * - um objeto com "warning", não um array vazio. Isso É o estado vazio
+ * legítimo (zero linhas), não um erro. Quando há dados, as linhas vêm em
+ *   { "fb_ads:insights_by_campaign": { "values": [ [...], [...] ] } }
+ * - chave "values", não "rows". Cada linha é um array posicional
+ *   [nome, results{value,title}, cost_per_results{value,title}, spend,
+ *   reach, impressions, ctr, cpc, cpm, frequency] com os números vindo como
+ *   string (ex: "323.75") - Number() já lida com isso.
  */
 function looksLikeRow(candidate: unknown): candidate is unknown[] {
   return Array.isArray(candidate) && candidate.length >= 4 && typeof candidate[0] === "string";
+}
+
+function hasWarning(node: unknown): boolean {
+  return !!node && typeof node === "object" && typeof (node as Record<string, unknown>).warning === "string";
 }
 
 function findRowsArray(node: unknown, depth: number): unknown[] | null {
@@ -131,7 +138,9 @@ function findRowsArray(node: unknown, depth: number): unknown[] | null {
     return null;
   }
   if (node && typeof node === "object") {
+    if (hasWarning(node)) return [];
     const obj = node as Record<string, unknown>;
+    if (Array.isArray(obj.values)) return obj.values;
     if (Array.isArray(obj.rows)) return obj.rows;
     for (const key of Object.keys(obj)) {
       const found = findRowsArray(obj[key], depth - 1);

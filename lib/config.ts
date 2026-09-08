@@ -1,10 +1,13 @@
 // Escopo fixo da integracao Reportei usada por este dashboard.
-// Existe uma segunda integracao no mesmo projeto (3747630 / act_1637839791031333)
-// que fica FORA do escopo e nunca deve ser consultada aqui.
+// Confirmado com o cliente em 08/09/2026: a conta que esta rodando a
+// campanha e a act_1637839791031333 ("CAMPANHA - Vinicius Conejo" no
+// Gerenciador de Anuncios da Meta; aparece como "CAMPANHA 2 - Vinicius
+// Conejo" no Reportei). A outra integracao do mesmo projeto (3747629 /
+// act_26862321646750483) fica FORA do escopo e nunca deve ser consultada.
 export const REPORTEI_PROJECT_ID = 1261706;
-export const REPORTEI_INTEGRATION_ID = 3747629;
+export const REPORTEI_INTEGRATION_ID = 3747630;
 export const REPORTEI_INTEGRATION_SLUG = "facebook_ads";
-export const REPORTEI_ACCOUNT_ID = "act_26862321646750483";
+export const REPORTEI_ACCOUNT_ID = "act_1637839791031333";
 
 // Propaganda eleitoral paga so e permitida a partir de 16/08 do ano eleitoral.
 // Usado como inicio da janela de "gasto acumulado da campanha".
@@ -82,6 +85,7 @@ export const RESULT_TITLE_TRANSLATIONS: Record<string, string> = {
   Reach: "Pessoas alcançadas",
   "Messaging Conversations Started": "Conversas no Chama o Doutor",
   "Omni Landing Page View": "Visualizações da página",
+  Thruplays: "Reproduções completas do vídeo",
 };
 
 export function translateResultTitle(title: string | null | undefined): string | null {
