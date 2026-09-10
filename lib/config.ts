@@ -112,16 +112,21 @@ export const PERIOD_LABELS: Record<PeriodPreset, string> = {
 // ---------------------------------------------------------------------------
 // Identidade visual
 //
-// PENDENCIA: a cor da marca (hex oficial da campanha, definida pela agencia
-// AKAHUB) ainda nao foi confirmada pelo cliente. NAO usar o laranja do NOVO
-// nem o verde do PODEMOS por suposicao. As cores abaixo sao um placeholder
-// neutro (paleta validada de acessibilidade) - troque os valores aqui assim
-// que o cliente enviar os hex oficiais; nenhum outro arquivo precisa mudar.
+// Cores estimadas a partir do site oficial (drviniciusconejo.com) e do
+// Instagram (@drviniciusconejo) em 10/09/2026: roxo/violeta forte (cor
+// dominante - fundo, logo, texto), verde-limão vibrante (CTAs, ícones) e
+// magenta/pink (números e destaques, ex: "2006"). São valores estimados
+// visualmente, não hex exatos da AKAHUB - ajustar se o cliente mandar o
+// guia de marca oficial depois.
 // ---------------------------------------------------------------------------
+export const BRAND_PURPLE = { light: "#5B21B6", dark: "#7C3AED" };
+export const BRAND_LIME = { light: "#A3E635", dark: "#84CC16" };
+export const BRAND_MAGENTA = { light: "#D6169A", dark: "#E22CB0" };
+
 export const BLOCK_COLORS: Record<BlockId, { light: string; dark: string }> = {
-  engajamento: { light: "#1baf7a", dark: "#199e70" }, // aqua - slot categorico 3
-  reconhecimento: { light: "#4a3aa7", dark: "#9085e9" }, // violeta - slot categorico 7
-  video: { light: "#2a78d6", dark: "#3987e5" }, // azul - slot categorico 1
+  engajamento: BRAND_LIME,
+  reconhecimento: BRAND_MAGENTA,
+  video: BRAND_PURPLE,
 };
 
 // ---------------------------------------------------------------------------

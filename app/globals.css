@@ -14,9 +14,10 @@
   --warning-bg: #fff8e6;
   --info-bg: #eef4fb;
   --info-border: #2a78d6;
-  --hero-bg: #0f1729;
+  --hero-bg: #5b21b6;
   --hero-text: #ffffff;
-  --hero-text-muted: rgba(255, 255, 255, 0.6);
+  --hero-text-muted: rgba(255, 255, 255, 0.7);
+  --hero-accent: #d6169a;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -114,7 +115,7 @@ button {
   font-size: 88px;
   font-weight: 800;
   line-height: 1;
-  color: rgba(255, 255, 255, 0.12);
+  color: var(--hero-accent);
 }
 
 .hero-number-range {
@@ -480,15 +481,16 @@ button {
 }
 
 .badge-engajamento {
-  background: #1baf7a;
+  background: #a3e635;
+  color: #1a1a19;
 }
 
 .badge-reconhecimento {
-  background: #4a3aa7;
+  background: #d6169a;
 }
 
 .badge-video {
-  background: #2a78d6;
+  background: #5b21b6;
 }
 
 .footer {
