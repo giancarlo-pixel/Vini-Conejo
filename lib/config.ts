@@ -17,9 +17,7 @@ export const REPORTEI_ACCOUNT_ID = "act_1637839791031333";
 // Usado como inicio da janela de "gasto acumulado da campanha".
 export const CAMPAIGN_WINDOW_START_DATE = "2026-08-16";
 
-export type BlockId = "whatsapp" | "engajamento" | "reconhecimento";
-
-export const UNCLASSIFIED_BLOCK_ID = "nao_classificadas" as const;
+export type BlockId = "engajamento" | "reconhecimento" | "video";
 
 interface BlockConfig {
   id: BlockId;
@@ -35,28 +33,20 @@ interface BlockConfig {
 }
 
 // Mapa TIPO -> bloco. O token [TIPO] no nome da campanha decide o bloco.
-// Ajustavel aqui sem tocar no restante do codigo.
+// Campanha sem TIPO reconhecido (ENG/REC) cai no bloco "video" por padrao -
+// e o que a conta esta rodando hoje (campanhas otimizadas para reproducao
+// de video, sem token no nome). Ajustavel aqui sem tocar no restante do
+// codigo. Sem bloco de WhatsApp por enquanto - a campanha nao esta usando
+// esse canal no momento (revisar se isso mudar).
 export const TIPO_TO_BLOCK: Record<string, BlockId> = {
-  WPP: "whatsapp",
   ENG: "engajamento",
   REC: "reconhecimento",
 };
 
 export const BLOCKS: Record<BlockId, BlockConfig> = {
-  whatsapp: {
-    id: "whatsapp",
-    order: 1,
-    label: "Chama o Doutor (WhatsApp)",
-    shortLabel: "Chama o Doutor",
-    description:
-      "Conversas iniciadas pelo canal direto de WhatsApp da campanha. E o funil central e a unica metrica de conversao real.",
-    isBrandInvestment: false,
-    costMode: "per_result",
-    costLabel: "Custo por conversa",
-  },
   engajamento: {
     id: "engajamento",
-    order: 2,
+    order: 1,
     label: "Engajamento",
     shortLabel: "Engajamento",
     description: "Interacoes com as publicacoes. Investimento em presenca de marca.",
@@ -66,7 +56,7 @@ export const BLOCKS: Record<BlockId, BlockConfig> = {
   },
   reconhecimento: {
     id: "reconhecimento",
-    order: 3,
+    order: 2,
     label: "Reconhecimento / Alcance",
     shortLabel: "Reconhecimento",
     description:
@@ -75,9 +65,20 @@ export const BLOCKS: Record<BlockId, BlockConfig> = {
     costMode: "cpm",
     costLabel: "Custo por mil impressoes (CPM)",
   },
+  video: {
+    id: "video",
+    order: 3,
+    label: "Reproduções de Vídeo",
+    shortLabel: "Vídeo",
+    description:
+      "Campanhas otimizadas para reproducao de video, sem token de TIPO no nome. Investimento em presenca de marca.",
+    isBrandInvestment: true,
+    costMode: "per_result",
+    costLabel: "Custo por reprodução",
+  },
 };
 
-export const BLOCK_ORDER: BlockId[] = ["whatsapp", "engajamento", "reconhecimento"];
+export const BLOCK_ORDER: BlockId[] = ["engajamento", "reconhecimento", "video"];
 
 // A Meta devolve o "title" do resultado em ingles. Traduzir para exibicao.
 // Quando a veiculacao comecar, conferir os titles reais retornados em
@@ -118,14 +119,10 @@ export const PERIOD_LABELS: Record<PeriodPreset, string> = {
 // que o cliente enviar os hex oficiais; nenhum outro arquivo precisa mudar.
 // ---------------------------------------------------------------------------
 export const BLOCK_COLORS: Record<BlockId, { light: string; dark: string }> = {
-  whatsapp: { light: "#2a78d6", dark: "#3987e5" }, // azul - slot categorico 1
   engajamento: { light: "#1baf7a", dark: "#199e70" }, // aqua - slot categorico 3
   reconhecimento: { light: "#4a3aa7", dark: "#9085e9" }, // violeta - slot categorico 7
+  video: { light: "#2a78d6", dark: "#3987e5" }, // azul - slot categorico 1
 };
-
-export const WARNING_COLOR = { light: "#fab219", dark: "#fab219" };
-// Cinza neutro - usado só no segmento "Não classificado" da barra de objetivo.
-export const UNCLASSIFIED_BAR_COLOR = { light: "#c3c2b7", dark: "#52514e" };
 
 // ---------------------------------------------------------------------------
 // Identidade do cabeçalho

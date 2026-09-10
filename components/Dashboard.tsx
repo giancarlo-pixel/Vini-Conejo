@@ -8,12 +8,11 @@ import {
   DASHBOARD_TITLE,
   PERIOD_LABELS,
   REPORTEI_ACCOUNT_ID,
-  UNCLASSIFIED_BAR_COLOR,
   type PeriodPreset,
 } from "@/lib/config";
 import { formatCurrency, formatDelta, formatNumber, formatPercent } from "@/lib/format";
 import { formatDateBR } from "@/lib/dates";
-import type { BlockResult, CampaignDisplayRow, UnclassifiedResult } from "@/lib/aggregate";
+import type { BlockResult, CampaignDisplayRow } from "@/lib/aggregate";
 
 interface Totals {
   spend: number;
@@ -32,7 +31,6 @@ interface DataResponse {
   totals: Totals;
   totalsComparison: Totals;
   blocks: BlockResult[];
-  unclassified: UnclassifiedResult;
   campaigns: CampaignDisplayRow[];
   generatedAt: string;
 }
@@ -44,16 +42,15 @@ interface ErrorResponse {
 const PRESETS: PeriodPreset[] = ["today", "7", "14", "30"];
 
 const BLOCK_NOTES: Record<string, string> = {
-  whatsapp: "Conversas geradas pelo canal direto — é a única métrica de conversão real da campanha.",
   engajamento: "Investimento em presença de marca, não é resultado de negócio direto.",
   reconhecimento: "Alcance somado entre campanhas do período — pode haver sobreposição de pessoas.",
-  nao_classificadas: "Campanhas fora do padrão de nome — renomeie para entrarem no bloco certo.",
+  video: "Campanhas sem token de TIPO no nome — hoje é o padrão da conta (foco em reprodução de vídeo).",
 };
 
 const BADGE_LABEL: Record<string, string> = {
-  whatsapp: "WPP",
   engajamento: "ENG",
   reconhecimento: "REC",
+  video: "VÍDEO",
 };
 
 export default function Dashboard() {
@@ -160,7 +157,7 @@ export default function Dashboard() {
             />
           </div>
 
-          <ObjectiveBreakdown blocks={data.blocks} unclassified={data.unclassified} />
+          <ObjectiveBreakdown blocks={data.blocks} />
 
           <section className="account-section">
             <h2 className="account-title">
@@ -235,17 +232,9 @@ function KpiCard({
   );
 }
 
-function ObjectiveBreakdown({ blocks, unclassified }: { blocks: BlockResult[]; unclassified: UnclassifiedResult }) {
-  const totalSpend = blocks.reduce((sum, b) => sum + b.spend, 0) + unclassified.spend;
-
-  const segments = [
-    ...blocks.map((b) => ({
-      id: b.id,
-      spend: b.spend,
-      color: BLOCK_COLORS[b.id],
-    })),
-    { id: "nao_classificadas", spend: unclassified.spend, color: UNCLASSIFIED_BAR_COLOR },
-  ].filter((s) => s.spend > 0);
+function ObjectiveBreakdown({ blocks }: { blocks: BlockResult[] }) {
+  const totalSpend = blocks.reduce((sum, b) => sum + b.spend, 0);
+  const segments = blocks.filter((b) => b.spend > 0);
 
   return (
     <section className="objective-section">
@@ -253,13 +242,13 @@ function ObjectiveBreakdown({ blocks, unclassified }: { blocks: BlockResult[]; u
 
       {totalSpend > 0 && (
         <div className="objective-bar">
-          {segments.map((s) => (
+          {segments.map((b) => (
             <div
-              key={s.id}
+              key={b.id}
               className="objective-bar-segment"
               style={{
-                flexGrow: s.spend,
-                background: s.color.light,
+                flexGrow: b.spend,
+                background: BLOCK_COLORS[b.id].light,
               }}
             />
           ))}
@@ -279,15 +268,6 @@ function ObjectiveBreakdown({ blocks, unclassified }: { blocks: BlockResult[]; u
             note={BLOCK_NOTES[block.id]}
           />
         ))}
-        <ObjectiveCard
-          title="Não classificado"
-          spend={unclassified.spend}
-          resultValue={null}
-          resultLabel={`${unclassified.campaignCount} campanha(s)`}
-          costPerResult={null}
-          costMode="per_result"
-          note={BLOCK_NOTES.nao_classificadas}
-        />
       </div>
     </section>
   );
@@ -347,11 +327,7 @@ function CampaignTable({ campaigns }: { campaigns: CampaignDisplayRow[] }) {
           {campaigns.map((c) => (
             <tr key={c.name}>
               <td className="campaign-name-cell">
-                {c.blockId ? (
-                  <span className={`badge badge-${c.blockId}`}>{BADGE_LABEL[c.blockId]}</span>
-                ) : (
-                  <span className="badge badge-unclassified">N/C</span>
-                )}
+                <span className={`badge badge-${c.blockId}`}>{BADGE_LABEL[c.blockId]}</span>
                 {c.name}
               </td>
               <td>{formatCurrency(c.spend)}</td>

@@ -479,10 +479,6 @@ button {
   vertical-align: middle;
 }
 
-.badge-whatsapp {
-  background: #2a78d6;
-}
-
 .badge-engajamento {
   background: #1baf7a;
 }
@@ -491,8 +487,8 @@ button {
   background: #4a3aa7;
 }
 
-.badge-unclassified {
-  background: var(--text-muted);
+.badge-video {
+  background: #2a78d6;
 }
 
 .footer {

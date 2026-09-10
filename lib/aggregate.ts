@@ -24,15 +24,9 @@ export interface BlockResult {
   campaignCount: number;
 }
 
-export interface UnclassifiedResult {
-  spend: number;
-  campaignCount: number;
-  campaigns: { name: string; spend: number }[];
-}
-
 export interface CampaignDisplayRow {
   name: string;
-  blockId: BlockId | null;
+  blockId: BlockId;
   spend: number;
   impressions: number;
   reach: number;
@@ -51,6 +45,11 @@ export function classifyCampaign(name: string): BlockId | null {
     if (token in TIPO_TO_BLOCK) return TIPO_TO_BLOCK[token];
   }
   return null;
+}
+
+/** Como classifyCampaign, mas campanha sem TIPO reconhecido cai no bloco "video" (o padrao atual da conta). */
+function resolveBlock(name: string): BlockId {
+  return classifyCampaign(name) ?? "video";
 }
 
 function aggregateBlock(blockId: BlockId, rows: CampaignRow[]) {
@@ -73,7 +72,7 @@ function aggregateBlock(blockId: BlockId, rows: CampaignRow[]) {
 
   const primaryMetricValue = hasRows ? (isReconhecimento ? reach : resultSum) : null;
 
-  const fallbackLabel = blockId === "whatsapp" ? "Conversas iniciadas" : "Interações com a publicação";
+  const fallbackLabel = blockId === "video" ? "Reproduções de vídeo" : "Interações com a publicação";
   const primaryMetricLabel = isReconhecimento
     ? "Pessoas alcançadas"
     : translateResultTitle(resultTitle) ?? fallbackLabel;
@@ -122,28 +121,18 @@ export function buildBlocks(currentRows: CampaignRow[], comparisonRows: Campaign
 function groupByBlock(rows: CampaignRow[]): Map<BlockId, CampaignRow[]> {
   const map = new Map<BlockId, CampaignRow[]>();
   for (const row of rows) {
-    const block = classifyCampaign(row.name);
-    if (!block) continue;
+    const block = resolveBlock(row.name);
     if (!map.has(block)) map.set(block, []);
     map.get(block)!.push(row);
   }
   return map;
 }
 
-export function buildUnclassified(rows: CampaignRow[]): UnclassifiedResult {
-  const unclassifiedRows = rows.filter((row) => classifyCampaign(row.name) === null);
-  return {
-    spend: unclassifiedRows.reduce((sum, row) => sum + row.spend, 0),
-    campaignCount: unclassifiedRows.length,
-    campaigns: unclassifiedRows.map((row) => ({ name: row.name, spend: row.spend })),
-  };
-}
-
-/** Uma linha por campanha, para a tabela detalhada - todas as campanhas, classificadas ou nao. */
+/** Uma linha por campanha, para a tabela detalhada - todas as campanhas. */
 export function buildCampaignDisplayRows(rows: CampaignRow[]): CampaignDisplayRow[] {
   return rows
     .map((row) => {
-      const blockId = classifyCampaign(row.name);
+      const blockId = resolveBlock(row.name);
       const isReconhecimento = blockId === "reconhecimento";
       return {
         name: row.name,
