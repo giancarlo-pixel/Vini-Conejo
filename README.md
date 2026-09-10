@@ -89,9 +89,14 @@ app/globals.css          — estilos + CSS de impressão
 
 ## Escopo de dados
 
-Projeto Reportei `1261706` (Dr Vinicius Conejo), integração `3747630`
+Projeto Reportei `1261706` (Dr Vinicius Conejo), integração `3774097`
 (`act_1637839791031333` — "CAMPANHA - Vinicius Conejo" no Gerenciador de
 Anúncios da Meta; aparece como "CAMPANHA 2 - Vinicius Conejo" no Reportei).
 Confirmado com o cliente em 08/09/2026 como a conta que está rodando a
 campanha. Existe uma segunda integração no mesmo projeto (`3747629` /
 `act_26862321646750483`) que fica **fora do escopo** e nunca é consultada.
+
+**Nota:** o ID `3747630`, usado numa versão anterior deste dashboard, estava
+incorreto (troca de dígitos) — o suporte do Reportei confirmou em 10/09/2026
+que o ID real é `3774097`. O 403 persistente na API era causado por esse ID
+inválido, não por permissão.

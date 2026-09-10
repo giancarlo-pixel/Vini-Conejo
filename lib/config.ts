@@ -4,8 +4,12 @@
 // Gerenciador de Anuncios da Meta; aparece como "CAMPANHA 2 - Vinicius
 // Conejo" no Reportei). A outra integracao do mesmo projeto (3747629 /
 // act_26862321646750483) fica FORA do escopo e nunca deve ser consultada.
+// ATENCAO: o ID 3747630 (retornado por uma consulta anterior) estava
+// ERRADO - o suporte do Reportei confirmou em 10/09/2026 que o ID real
+// dessa integracao na base da API v2 e 3774097. O 403 persistente era
+// causado por esse ID invalido, nao por permissao.
 export const REPORTEI_PROJECT_ID = 1261706;
-export const REPORTEI_INTEGRATION_ID = 3747630;
+export const REPORTEI_INTEGRATION_ID = 3774097;
 export const REPORTEI_INTEGRATION_SLUG = "facebook_ads";
 export const REPORTEI_ACCOUNT_ID = "act_1637839791031333";
 
