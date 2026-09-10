@@ -1,10 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { PERIOD_LABELS, type PeriodPreset, BLOCK_COLORS } from "@/lib/config";
-import { formatCurrency, formatDelta, formatNumber } from "@/lib/format";
+import {
+  BLOCK_COLORS,
+  CANDIDATE_NUMBER,
+  DASHBOARD_EYEBROW,
+  DASHBOARD_TITLE,
+  PERIOD_LABELS,
+  REPORTEI_ACCOUNT_ID,
+  UNCLASSIFIED_BAR_COLOR,
+  type PeriodPreset,
+} from "@/lib/config";
+import { formatCurrency, formatDelta, formatNumber, formatPercent } from "@/lib/format";
 import { formatDateBR } from "@/lib/dates";
-import type { BlockResult, UnclassifiedResult } from "@/lib/aggregate";
+import type { BlockResult, CampaignDisplayRow, UnclassifiedResult } from "@/lib/aggregate";
+
+interface Totals {
+  spend: number;
+  impressions: number;
+  reach: number;
+}
 
 interface DataResponse {
   period: PeriodPreset;
@@ -14,8 +29,11 @@ interface DataResponse {
   hasAnyData: boolean;
   accumulatedSpend: number;
   accumulatedRange: { start: string; end: string };
+  totals: Totals;
+  totalsComparison: Totals;
   blocks: BlockResult[];
   unclassified: UnclassifiedResult;
+  campaigns: CampaignDisplayRow[];
   generatedAt: string;
 }
 
@@ -24,6 +42,19 @@ interface ErrorResponse {
 }
 
 const PRESETS: PeriodPreset[] = ["today", "7", "14", "30"];
+
+const BLOCK_NOTES: Record<string, string> = {
+  whatsapp: "Conversas geradas pelo canal direto — é a única métrica de conversão real da campanha.",
+  engajamento: "Investimento em presença de marca, não é resultado de negócio direto.",
+  reconhecimento: "Alcance somado entre campanhas do período — pode haver sobreposição de pessoas.",
+  nao_classificadas: "Campanhas fora do padrão de nome — renomeie para entrarem no bloco certo.",
+};
+
+const BADGE_LABEL: Record<string, string> = {
+  whatsapp: "WPP",
+  engajamento: "ENG",
+  reconhecimento: "REC",
+};
 
 export default function Dashboard() {
   const [period, setPeriod] = useState<PeriodPreset>("7");
@@ -62,12 +93,34 @@ export default function Dashboard() {
 
   return (
     <div className="page">
-      <header className="header">
-        <div>
-          <h1>Dashboard de Performance</h1>
-          <p className="header-subtitle">Dr. Vinícius Conejo — Meta Ads · Campanha 2026</p>
+      <header className="hero">
+        <div className="hero-top">
+          <div>
+            <p className="hero-eyebrow">{DASHBOARD_EYEBROW}</p>
+            <h1>{DASHBOARD_TITLE}</h1>
+          </div>
+          <div className="hero-number-block no-print">
+            <span className="hero-number">{CANDIDATE_NUMBER}</span>
+            {data && (
+              <span className="hero-number-range">
+                {formatDateBR(data.range.start)} – {formatDateBR(data.range.end)}
+              </span>
+            )}
+          </div>
         </div>
-        <div className="header-actions no-print">
+
+        <div className="hero-controls no-print">
+          <div className="period-selector">
+            {PRESETS.map((p) => (
+              <button
+                key={p}
+                className={p === period ? "period-btn active" : "period-btn"}
+                onClick={() => setPeriod(p)}
+              >
+                {PERIOD_LABELS[p]}
+              </button>
+            ))}
+          </div>
           <button className="btn-ghost" onClick={() => window.print()}>
             Exportar PDF
           </button>
@@ -78,18 +131,6 @@ export default function Dashboard() {
       </header>
 
       <AccumulatedBar spend={data?.accumulatedSpend} range={data?.accumulatedRange} loading={loading} />
-
-      <div className="period-selector no-print">
-        {PRESETS.map((p) => (
-          <button
-            key={p}
-            className={p === period ? "period-btn active" : "period-btn"}
-            onClick={() => setPeriod(p)}
-          >
-            {PERIOD_LABELS[p]}
-          </button>
-        ))}
-      </div>
 
       {data?.isPartial && (
         <p className="partial-warning">
@@ -107,12 +148,26 @@ export default function Dashboard() {
 
       {!loading && !error && data && data.hasAnyData && (
         <>
-          <div className="blocks-grid">
-            {data.blocks.map((block) => (
-              <BlockCard key={block.id} block={block} />
-            ))}
+          <div className="kpi-grid">
+            <KpiCard label="Investimento" value={formatCurrency(data.totals.spend)} current={data.totals.spend} previous={data.totalsComparison.spend} />
+            <KpiCard label="Impressões" value={formatNumber(data.totals.impressions)} current={data.totals.impressions} previous={data.totalsComparison.impressions} />
+            <KpiCard
+              label="Alcance"
+              value={formatNumber(data.totals.reach)}
+              current={data.totals.reach}
+              previous={data.totalsComparison.reach}
+              hint="Soma entre campanhas — quem foi atingido mais de uma vez não é público único."
+            />
           </div>
-          {data.unclassified.campaignCount > 0 && <UnclassifiedCard unclassified={data.unclassified} />}
+
+          <ObjectiveBreakdown blocks={data.blocks} unclassified={data.unclassified} />
+
+          <section className="account-section">
+            <h2 className="account-title">
+              {"CAMPANHA - Vinicius Conejo"} <span className="account-id">{REPORTEI_ACCOUNT_ID}</span>
+            </h2>
+            <CampaignTable campaigns={data.campaigns} />
+          </section>
         </>
       )}
 
@@ -150,17 +205,185 @@ function AccumulatedBar({
   );
 }
 
+function KpiCard({
+  label,
+  value,
+  current,
+  previous,
+  hint,
+}: {
+  label: string;
+  value: string;
+  current: number;
+  previous: number;
+  hint?: string;
+}) {
+  const delta = formatDelta(current, previous);
+  return (
+    <article className="kpi-card">
+      <span className="kpi-label">{label}</span>
+      <div className="kpi-value-row">
+        <span className="kpi-value">{value}</span>
+        {delta.pct !== null && (
+          <span className={`delta delta-${delta.direction}`}>
+            {delta.direction === "up" ? "▲" : delta.direction === "down" ? "▼" : "—"} {Math.abs(delta.pct).toFixed(1)}%
+          </span>
+        )}
+      </div>
+      {hint && <p className="kpi-hint">{hint}</p>}
+    </article>
+  );
+}
+
+function ObjectiveBreakdown({ blocks, unclassified }: { blocks: BlockResult[]; unclassified: UnclassifiedResult }) {
+  const totalSpend = blocks.reduce((sum, b) => sum + b.spend, 0) + unclassified.spend;
+
+  const segments = [
+    ...blocks.map((b) => ({
+      id: b.id,
+      spend: b.spend,
+      color: BLOCK_COLORS[b.id],
+    })),
+    { id: "nao_classificadas", spend: unclassified.spend, color: UNCLASSIFIED_BAR_COLOR },
+  ].filter((s) => s.spend > 0);
+
+  return (
+    <section className="objective-section">
+      <h2 className="section-title">Divisão do investimento por objetivo</h2>
+
+      {totalSpend > 0 && (
+        <div className="objective-bar">
+          {segments.map((s) => (
+            <div
+              key={s.id}
+              className="objective-bar-segment"
+              style={{
+                flexGrow: s.spend,
+                background: s.color.light,
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="objective-cards">
+        {blocks.map((block) => (
+          <ObjectiveCard
+            key={block.id}
+            title={block.label}
+            spend={block.spend}
+            resultValue={block.primaryMetricValue}
+            resultLabel={block.primaryMetricLabel}
+            costPerResult={block.costPerResult}
+            costMode={block.costMode}
+            note={BLOCK_NOTES[block.id]}
+          />
+        ))}
+        <ObjectiveCard
+          title="Não classificado"
+          spend={unclassified.spend}
+          resultValue={null}
+          resultLabel={`${unclassified.campaignCount} campanha(s)`}
+          costPerResult={null}
+          costMode="per_result"
+          note={BLOCK_NOTES.nao_classificadas}
+        />
+      </div>
+    </section>
+  );
+}
+
+function ObjectiveCard({
+  title,
+  spend,
+  resultValue,
+  resultLabel,
+  costPerResult,
+  costMode,
+  note,
+}: {
+  title: string;
+  spend: number;
+  resultValue: number | null;
+  resultLabel: string;
+  costPerResult: number | null;
+  costMode: "per_result" | "cpm";
+  note?: string;
+}) {
+  const costHint = costPerResult !== null ? (costMode === "cpm" ? `R$ ${costPerResult.toFixed(2)} por mil` : formatCurrency(costPerResult)) : null;
+
+  return (
+    <article className="objective-card">
+      <h3>{title}</h3>
+      <span className="objective-card-value">{formatCurrency(spend)}</span>
+      <p className="objective-card-secondary">
+        {resultValue !== null ? `${formatNumber(resultValue)} ${resultLabel}` : resultLabel}
+        {costHint && <> · {costHint}</>}
+      </p>
+      {note && <p className="objective-card-note">{note}</p>}
+    </article>
+  );
+}
+
+function CampaignTable({ campaigns }: { campaigns: CampaignDisplayRow[] }) {
+  if (campaigns.length === 0) return null;
+  return (
+    <div className="table-scroll">
+      <table className="campaign-table">
+        <thead>
+          <tr>
+            <th>Campanha</th>
+            <th>Gasto</th>
+            <th>Impressões</th>
+            <th>Alcance</th>
+            <th>Resultados</th>
+            <th>Custo/Result.</th>
+            <th>CTR</th>
+            <th>CPC</th>
+            <th>CPM</th>
+          </tr>
+        </thead>
+        <tbody>
+          {campaigns.map((c) => (
+            <tr key={c.name}>
+              <td className="campaign-name-cell">
+                {c.blockId ? (
+                  <span className={`badge badge-${c.blockId}`}>{BADGE_LABEL[c.blockId]}</span>
+                ) : (
+                  <span className="badge badge-unclassified">N/C</span>
+                )}
+                {c.name}
+              </td>
+              <td>{formatCurrency(c.spend)}</td>
+              <td>{formatNumber(c.impressions)}</td>
+              <td>{formatNumber(c.reach)}</td>
+              <td>
+                {c.resultValue !== null ? (
+                  <>
+                    <div>{formatNumber(c.resultValue)}</div>
+                    <div className="table-subtext">{c.resultLabel}</div>
+                  </>
+                ) : (
+                  "—"
+                )}
+              </td>
+              <td>{c.costPerResult !== null ? formatCurrency(c.costPerResult) : "—"}</td>
+              <td>{formatPercent(c.ctr)}</td>
+              <td>{formatCurrency(c.cpc)}</td>
+              <td>{formatCurrency(c.cpm)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function LoadingState() {
   return <div className="state-panel state-loading">Carregando dados do Reportei…</div>;
 }
 
-function ErrorState({
-  error,
-  onRetry,
-}: {
-  error: ErrorResponse["error"];
-  onRetry: () => void;
-}) {
+function ErrorState({ error, onRetry }: { error: ErrorResponse["error"]; onRetry: () => void }) {
   const hint =
     error.kind === "auth"
       ? "Verifique se a variável REPORTEI_TOKEN está configurada corretamente na Vercel."
@@ -187,70 +410,5 @@ function EmptyState({ range, periodLabel }: { range: { start: string; end: strin
         assim que as campanhas subirem, os números aparecem aqui automaticamente.
       </p>
     </div>
-  );
-}
-
-function BlockCard({ block }: { block: BlockResult }) {
-  const color = BLOCK_COLORS[block.id];
-  const delta = formatDelta(block.spend, block.spendComparison);
-  const hasResult = block.campaignCount > 0;
-
-  return (
-    <article className="block-card" style={{ "--block-color": color.light, "--block-color-dark": color.dark } as React.CSSProperties}>
-      <div className="block-card-header">
-        <span className="block-dot" />
-        <h2>{block.label}</h2>
-      </div>
-      {block.isBrandInvestment && <span className="block-tag">Investimento em presença de marca</span>}
-
-      {hasResult ? (
-        <>
-          <div className="block-metric">
-            <span className="block-metric-value">{formatNumber(block.primaryMetricValue ?? 0)}</span>
-            <span className="block-metric-label">{block.primaryMetricLabel}</span>
-          </div>
-          <dl className="block-details">
-            <div>
-              <dt>Investimento</dt>
-              <dd>
-                {formatCurrency(block.spend)}
-                {delta.pct !== null && (
-                  <span className={`delta delta-${delta.direction}`}>
-                    {delta.direction === "up" ? "▲" : delta.direction === "down" ? "▼" : "—"}{" "}
-                    {Math.abs(delta.pct).toFixed(0)}%
-                  </span>
-                )}
-              </dd>
-            </div>
-            <div>
-              <dt>{block.costLabel}</dt>
-              <dd>{block.costPerResult !== null ? formatCurrency(block.costPerResult) : "—"}</dd>
-            </div>
-          </dl>
-        </>
-      ) : (
-        <p className="block-empty">Sem veiculação neste bloco no período selecionado.</p>
-      )}
-    </article>
-  );
-}
-
-function UnclassifiedCard({ unclassified }: { unclassified: UnclassifiedResult }) {
-  return (
-    <article className="unclassified-card">
-      <h2>⚠ Campanhas não classificadas</h2>
-      <p>
-        {unclassified.campaignCount} campanha(s) fora do padrão de nomenclatura, somando{" "}
-        {formatCurrency(unclassified.spend)}. Renomeie seguindo o padrão{" "}
-        <code>NN [DD/MM/AA] [TIPO] [PLATAFORMA] [CRIATIVO]</code> para que entrem nos blocos corretos.
-      </p>
-      <ul>
-        {unclassified.campaigns.map((c) => (
-          <li key={c.name}>
-            {c.name} — {formatCurrency(c.spend)}
-          </li>
-        ))}
-      </ul>
-    </article>
   );
 }

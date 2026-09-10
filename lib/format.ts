@@ -13,6 +13,10 @@ export function formatNumber(value: number): string {
   return numberFormatter.format(Math.round(value));
 }
 
+export function formatPercent(value: number): string {
+  return `${value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+}
+
 export function formatDelta(current: number, previous: number): { pct: number | null; direction: "up" | "down" | "flat" } {
   if (previous <= 0) {
     if (current <= 0) return { pct: null, direction: "flat" };

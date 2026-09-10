@@ -124,3 +124,13 @@ export const BLOCK_COLORS: Record<BlockId, { light: string; dark: string }> = {
 };
 
 export const WARNING_COLOR = { light: "#fab219", dark: "#fab219" };
+// Cinza neutro - usado só no segmento "Não classificado" da barra de objetivo.
+export const UNCLASSIFIED_BAR_COLOR = { light: "#c3c2b7", dark: "#52514e" };
+
+// ---------------------------------------------------------------------------
+// Identidade do cabeçalho
+// ---------------------------------------------------------------------------
+export const DASHBOARD_EYEBROW = "META ADS · DR. VINÍCIUS CONEJO · CAMPANHA 2026";
+export const DASHBOARD_TITLE = "Performance de Mídia";
+// Número de urna do candidato (PODEMOS) - exibido em destaque no cabeçalho.
+export const CANDIDATE_NUMBER = "2006";
