@@ -211,7 +211,7 @@ export async function getCampaignInsights(start: string, end: string): Promise<C
       integration_id: REPORTEI_INTEGRATION_ID,
       start,
       end,
-      metrics: [{ ...catalogEntry, dimensions: ["campaign"] }],
+      metrics: [catalogEntry],
     }),
   });
 
