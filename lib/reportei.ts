@@ -190,16 +190,37 @@ function parseRow(raw: unknown): CampaignRow | null {
 const insightsCache = new Map<string, { data: CampaignRow[]; fetchedAt: number }>();
 const INSIGHTS_TTL_MS = 300_000; // 5 min - a conta compartilha 100 req/min com outros tokens da agência
 
-/** Igual a getCampaignInsights, mas com cache em memória para não estourar o rate limit em recarregamentos. */
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Igual a getCampaignInsights, mas com cache em memória para não estourar o
+ * rate limit em recarregamentos, e uma nova tentativa automática quando a
+ * API devolve formato inesperado - confirmado que isso e uma instabilidade
+ * passageira dela (rajada de chamadas simultaneas), nao um erro real.
+ */
 export async function getCampaignInsightsCached(start: string, end: string): Promise<CampaignRow[]> {
   const key = `${start}:${end}`;
   const cached = insightsCache.get(key);
   if (cached && Date.now() - cached.fetchedAt < INSIGHTS_TTL_MS) {
     return cached.data;
   }
-  const data = await getCampaignInsights(start, end);
-  insightsCache.set(key, { data, fetchedAt: Date.now() });
-  return data;
+
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const data = await getCampaignInsights(start, end);
+      insightsCache.set(key, { data, fetchedAt: Date.now() });
+      return data;
+    } catch (err) {
+      lastError = err;
+      const isRetryable = err instanceof ReporteiError && err.kind === "unexpected_shape";
+      if (!isRetryable || attempt === 2) throw err;
+      await sleep(1500 * (attempt + 1));
+    }
+  }
+  throw lastError;
 }
 
 export async function getCampaignInsights(start: string, end: string): Promise<CampaignRow[]> {

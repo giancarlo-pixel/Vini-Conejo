@@ -34,11 +34,13 @@ export async function GET(request: NextRequest) {
   const accumulatedRange = getAccumulatedRange();
 
   try {
-    const [currentRows, comparisonRows, accumulatedRows] = await Promise.all([
-      getCampaignInsightsCached(range.start, range.end),
-      getCampaignInsightsCached(comparisonRange.start, comparisonRange.end),
-      getCampaignInsightsCached(accumulatedRange.start, accumulatedRange.end),
-    ]);
+    // Sequencial, nao Promise.all: 3 chamadas simultaneas pro Reportei
+    // disparavam um limite de rajada da API (100 req/min e compartilhado
+    // com outros tokens da agencia) e voltavam com corpo em formato
+    // inesperado. Uma chamada por vez e mais lento mas confiavel.
+    const currentRows = await getCampaignInsightsCached(range.start, range.end);
+    const comparisonRows = await getCampaignInsightsCached(comparisonRange.start, comparisonRange.end);
+    const accumulatedRows = await getCampaignInsightsCached(accumulatedRange.start, accumulatedRange.end);
 
     const blocks = buildBlocks(currentRows, comparisonRows);
     const campaigns = buildCampaignDisplayRows(currentRows);
