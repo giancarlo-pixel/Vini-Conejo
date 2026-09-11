@@ -5,6 +5,10 @@ import { getAccumulatedRange, getComparisonRange, getPeriodRange, parseCustomRan
 import { getCampaignInsightsCached, ReporteiError } from "@/lib/reportei";
 import type { CampaignRow } from "@/lib/reportei";
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function sumTotals(rows: CampaignRow[]) {
   return rows.reduce(
     (acc, row) => {
@@ -37,9 +41,14 @@ export async function GET(request: NextRequest) {
     // Sequencial, nao Promise.all: 3 chamadas simultaneas pro Reportei
     // disparavam um limite de rajada da API (100 req/min e compartilhado
     // com outros tokens da agencia) e voltavam com corpo em formato
-    // inesperado. Uma chamada por vez e mais lento mas confiavel.
+    // inesperado. Uma chamada por vez e mais lento mas confiavel. Um
+    // pequeno intervalo entre elas da margem extra contra o limite
+    // compartilhado (getCampaignInsightsCached ja tem retry com backoff
+    // para quando isso nao for suficiente).
     const currentRows = await getCampaignInsightsCached(range.start, range.end);
+    await sleep(400);
     const comparisonRows = await getCampaignInsightsCached(comparisonRange.start, comparisonRange.end);
+    await sleep(400);
     const accumulatedRows = await getCampaignInsightsCached(accumulatedRange.start, accumulatedRange.end);
 
     const blocks = buildBlocks(currentRows, comparisonRows);
@@ -64,7 +73,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (err) {
     if (err instanceof ReporteiError) {
-      const status = err.kind === "auth" ? 500 : 502;
+      const status = err.kind === "auth" ? 500 : err.kind === "rate_limit" ? 503 : 502;
       return NextResponse.json({ error: { kind: err.kind, message: err.message } }, { status });
     }
     return NextResponse.json(

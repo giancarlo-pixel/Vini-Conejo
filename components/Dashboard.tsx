@@ -36,7 +36,7 @@ interface DataResponse {
 }
 
 interface ErrorResponse {
-  error: { kind: "auth" | "network" | "unexpected_shape" | "unknown"; message: string };
+  error: { kind: "auth" | "network" | "unexpected_shape" | "rate_limit" | "unknown"; message: string };
 }
 
 const PRESETS: PeriodPreset[] = ["today", "7", "14", "30"];
@@ -409,7 +409,9 @@ function ErrorState({ error, onRetry }: { error: ErrorResponse["error"]; onRetry
   const hint =
     error.kind === "auth"
       ? "Verifique se a variável REPORTEI_TOKEN está configurada corretamente na Vercel."
-      : "Isso costuma ser temporário. Tente novamente em alguns instantes.";
+      : error.kind === "rate_limit"
+        ? "O Reportei limitou as chamadas por alguns instantes (limite compartilhado com outros paineis da agência). Aguarde um pouco e tente novamente."
+        : "Isso costuma ser temporário. Tente novamente em alguns instantes.";
   return (
     <div className="state-panel state-error">
       <strong>Não foi possível carregar os dados.</strong>

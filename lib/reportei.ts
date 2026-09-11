@@ -2,7 +2,7 @@ import { REPORTEI_INTEGRATION_ID, REPORTEI_INTEGRATION_SLUG } from "./config";
 
 const BASE_URL = "https://app.reportei.com/api/v2";
 
-export type ReporteiErrorKind = "auth" | "network" | "unexpected_shape";
+export type ReporteiErrorKind = "auth" | "network" | "unexpected_shape" | "rate_limit";
 
 export class ReporteiError extends Error {
   kind: ReporteiErrorKind;
@@ -62,6 +62,12 @@ async function reporteiFetch(path: string, init?: RequestInit): Promise<unknown>
 
   if (response.status === 401 || response.status === 403) {
     throw new ReporteiError("auth", "Token do Reportei inválido, expirado ou sem permissão.");
+  }
+  if (response.status === 429) {
+    throw new ReporteiError(
+      "rate_limit",
+      "A API do Reportei limitou as chamadas (limite de 100 req/min compartilhado com outros tokens da agência)."
+    );
   }
   if (!response.ok) {
     throw new ReporteiError("network", `A API do Reportei respondeu com status ${response.status}.`);
@@ -207,17 +213,22 @@ export async function getCampaignInsightsCached(start: string, end: string): Pro
     return cached.data;
   }
 
+  const MAX_ATTEMPTS = 5;
   let lastError: unknown;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     try {
       const data = await getCampaignInsights(start, end);
       insightsCache.set(key, { data, fetchedAt: Date.now() });
       return data;
     } catch (err) {
       lastError = err;
-      const isRetryable = err instanceof ReporteiError && err.kind === "unexpected_shape";
-      if (!isRetryable || attempt === 2) throw err;
-      await sleep(1500 * (attempt + 1));
+      const isRetryable =
+        err instanceof ReporteiError && (err.kind === "unexpected_shape" || err.kind === "rate_limit");
+      if (!isRetryable || attempt === MAX_ATTEMPTS - 1) throw err;
+      // Backoff exponencial: 2s, 4s, 8s, 16s - a instabilidade por rajada
+      // costuma durar poucos segundos, mas o limite e compartilhado com
+      // outros tokens da agencia e pode levar mais tempo para liberar.
+      await sleep(2000 * 2 ** attempt);
     }
   }
   throw lastError;
@@ -238,8 +249,14 @@ export async function getCampaignInsights(start: string, end: string): Promise<C
 
   const rows = findRowsArray(json, 4);
   if (rows === null) {
+    // Sob rajada de chamadas o Reportei por vezes devolve HTTP 200 com um
+    // corpo de aviso de limite em vez de status 429 - tratar como
+    // rate_limit (mais tentativas, espera maior) em vez de erro definitivo.
+    const flat = JSON.stringify(json).toLowerCase();
+    const looksLikeThrottle =
+      flat.includes("too many") || flat.includes("rate limit") || flat.includes("throttle");
     throw new ReporteiError(
-      "unexpected_shape",
+      looksLikeThrottle ? "rate_limit" : "unexpected_shape",
       "Resposta de POST /metrics/get-data em formato não reconhecido."
     );
   }
