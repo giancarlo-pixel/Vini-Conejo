@@ -155,6 +155,36 @@ button {
   font-weight: 600;
 }
 
+.date-range-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.date-range-picker input[type="date"] {
+  background: transparent;
+  border: none;
+  color: var(--hero-text);
+  font-size: 13px;
+  padding: 4px 2px;
+  color-scheme: dark;
+}
+
+.date-range-picker input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+.date-range-sep {
+  color: var(--hero-text-muted);
+  font-size: 13px;
+}
+
 .btn-ghost {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.15);

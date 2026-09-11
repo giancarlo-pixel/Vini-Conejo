@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildBlocks, buildCampaignDisplayRows } from "@/lib/aggregate";
 import { PERIOD_LABELS, type PeriodPreset } from "@/lib/config";
-import { getAccumulatedRange, getComparisonRange, getPeriodRange } from "@/lib/dates";
+import { getAccumulatedRange, getComparisonRange, getPeriodRange, parseCustomRange } from "@/lib/dates";
 import { getCampaignInsightsCached, ReporteiError } from "@/lib/reportei";
 import type { CampaignRow } from "@/lib/reportei";
 
@@ -25,7 +25,11 @@ export async function GET(request: NextRequest) {
   const presetParam = request.nextUrl.searchParams.get("period");
   const preset: PeriodPreset = isValidPreset(presetParam) ? presetParam : "7";
 
-  const range = getPeriodRange(preset);
+  const customRange = parseCustomRange(
+    request.nextUrl.searchParams.get("start"),
+    request.nextUrl.searchParams.get("end")
+  );
+  const range = customRange ?? getPeriodRange(preset);
   const comparisonRange = getComparisonRange(range);
   const accumulatedRange = getAccumulatedRange();
 
@@ -43,7 +47,7 @@ export async function GET(request: NextRequest) {
     const totalsComparison = sumTotals(comparisonRows);
 
     return NextResponse.json({
-      period: preset,
+      period: customRange ? "custom" : preset,
       range,
       comparisonRange,
       isPartial: range.isPartial,

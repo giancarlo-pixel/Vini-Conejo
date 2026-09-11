@@ -21,7 +21,7 @@ interface Totals {
 }
 
 interface DataResponse {
-  period: PeriodPreset;
+  period: PeriodPreset | "custom";
   range: { start: string; end: string };
   comparisonRange: { start: string; end: string };
   isPartial: boolean;
@@ -55,15 +55,21 @@ const BADGE_LABEL: Record<string, string> = {
 
 export default function Dashboard() {
   const [period, setPeriod] = useState<PeriodPreset>("7");
+  const [customRange, setCustomRange] = useState<{ start: string; end: string } | null>(null);
+  const [startInput, setStartInput] = useState("");
+  const [endInput, setEndInput] = useState("");
   const [data, setData] = useState<DataResponse | null>(null);
   const [error, setError] = useState<ErrorResponse["error"] | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async (p: PeriodPreset) => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/data?period=${p}`, { cache: "no-store" });
+      const query = customRange
+        ? `start=${customRange.start}&end=${customRange.end}`
+        : `period=${period}`;
+      const response = await fetch(`/api/data?${query}`, { cache: "no-store" });
       const json = await response.json();
       if (!response.ok) {
         setError((json as ErrorResponse).error);
@@ -77,16 +83,31 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [period, customRange]);
 
   useEffect(() => {
-    load(period);
-  }, [load, period]);
+    load();
+  }, [load]);
+
+  function selectPreset(p: PeriodPreset) {
+    setCustomRange(null);
+    setStartInput("");
+    setEndInput("");
+    setPeriod(p);
+  }
+
+  function applyCustomRange(nextStart: string, nextEnd: string) {
+    if (nextStart && nextEnd && nextStart <= nextEnd) {
+      setCustomRange({ start: nextStart, end: nextEnd });
+    }
+  }
 
   async function handleLogout() {
     await fetch("/api/auth", { method: "DELETE" });
     window.location.href = "/login";
   }
+
+  const periodLabel = customRange ? "período personalizado" : PERIOD_LABELS[period];
 
   return (
     <div className="page">
@@ -111,13 +132,38 @@ export default function Dashboard() {
             {PRESETS.map((p) => (
               <button
                 key={p}
-                className={p === period ? "period-btn active" : "period-btn"}
-                onClick={() => setPeriod(p)}
+                className={p === period && !customRange ? "period-btn active" : "period-btn"}
+                onClick={() => selectPreset(p)}
               >
                 {PERIOD_LABELS[p]}
               </button>
             ))}
           </div>
+
+          <div className="date-range-picker">
+            <input
+              type="date"
+              aria-label="Data inicial"
+              value={startInput}
+              max={endInput || undefined}
+              onChange={(e) => {
+                setStartInput(e.target.value);
+                applyCustomRange(e.target.value, endInput);
+              }}
+            />
+            <span className="date-range-sep">–</span>
+            <input
+              type="date"
+              aria-label="Data final"
+              value={endInput}
+              min={startInput || undefined}
+              onChange={(e) => {
+                setEndInput(e.target.value);
+                applyCustomRange(startInput, e.target.value);
+              }}
+            />
+          </div>
+
           <button className="btn-ghost" onClick={() => window.print()}>
             Exportar PDF
           </button>
@@ -137,10 +183,10 @@ export default function Dashboard() {
 
       {loading && <LoadingState />}
 
-      {!loading && error && <ErrorState error={error} onRetry={() => load(period)} />}
+      {!loading && error && <ErrorState error={error} onRetry={() => load()} />}
 
       {!loading && !error && data && !data.hasAnyData && (
-        <EmptyState range={data.range} periodLabel={PERIOD_LABELS[period]} />
+        <EmptyState range={data.range} periodLabel={periodLabel} />
       )}
 
       {!loading && !error && data && data.hasAnyData && (

@@ -64,3 +64,15 @@ export function formatDateBR(dateStr: string): string {
   const [y, m, d] = dateStr.split("-");
   return `${d}/${m}/${y}`;
 }
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Valida "YYYY-MM-DD" e devolve um DateRange (start<=end, end<=hoje), ou null se invalido. */
+export function parseCustomRange(startParam: string | null, endParam: string | null): (DateRange & { isPartial: boolean }) | null {
+  if (!startParam || !endParam) return null;
+  if (!DATE_RE.test(startParam) || !DATE_RE.test(endParam)) return null;
+  const today = todaySaoPaulo();
+  if (startParam > endParam) return null;
+  const end = endParam > today ? today : endParam;
+  return { start: startParam, end, isPartial: end === today };
+}
