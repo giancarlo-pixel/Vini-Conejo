@@ -20,14 +20,20 @@ interface Totals {
   reach: number;
 }
 
+interface ApiError {
+  kind: "auth" | "network" | "unexpected_shape" | "rate_limit" | "unknown";
+  message: string;
+}
+
 interface DataResponse {
-  period: PeriodPreset | "custom";
+  period: PeriodPreset;
   range: { start: string; end: string };
   comparisonRange: { start: string; end: string };
   isPartial: boolean;
   hasAnyData: boolean;
-  accumulatedSpend: number;
+  accumulatedSpend: number | null;
   accumulatedRange: { start: string; end: string };
+  accumulatedError: ApiError | null;
   totals: Totals;
   totalsComparison: Totals;
   blocks: BlockResult[];
@@ -36,10 +42,10 @@ interface DataResponse {
 }
 
 interface ErrorResponse {
-  error: { kind: "auth" | "network" | "unexpected_shape" | "rate_limit" | "unknown"; message: string };
+  error: ApiError;
 }
 
-const PRESETS: PeriodPreset[] = ["today", "7", "14", "30"];
+const PRESETS: PeriodPreset[] = ["today", "3", "7", "14"];
 
 const BLOCK_NOTES: Record<string, string> = {
   engajamento: "Investimento em presença de marca, não é resultado de negócio direto.",
@@ -55,21 +61,15 @@ const BADGE_LABEL: Record<string, string> = {
 
 export default function Dashboard() {
   const [period, setPeriod] = useState<PeriodPreset>("7");
-  const [customRange, setCustomRange] = useState<{ start: string; end: string } | null>(null);
-  const [startInput, setStartInput] = useState("");
-  const [endInput, setEndInput] = useState("");
   const [data, setData] = useState<DataResponse | null>(null);
-  const [error, setError] = useState<ErrorResponse["error"] | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const query = customRange
-        ? `start=${customRange.start}&end=${customRange.end}`
-        : `period=${period}`;
-      const response = await fetch(`/api/data?${query}`, { cache: "no-store" });
+      const response = await fetch(`/api/data?period=${period}`, { cache: "no-store" });
       const json = await response.json();
       if (!response.ok) {
         setError((json as ErrorResponse).error);
@@ -83,31 +83,18 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [period, customRange]);
+  }, [period]);
 
   useEffect(() => {
     load();
   }, [load]);
-
-  function selectPreset(p: PeriodPreset) {
-    setCustomRange(null);
-    setStartInput("");
-    setEndInput("");
-    setPeriod(p);
-  }
-
-  function applyCustomRange(nextStart: string, nextEnd: string) {
-    if (nextStart && nextEnd && nextStart <= nextEnd) {
-      setCustomRange({ start: nextStart, end: nextEnd });
-    }
-  }
 
   async function handleLogout() {
     await fetch("/api/auth", { method: "DELETE" });
     window.location.href = "/login";
   }
 
-  const periodLabel = customRange ? "período personalizado" : PERIOD_LABELS[period];
+  const periodLabel = PERIOD_LABELS[period];
 
   return (
     <div className="page">
@@ -132,36 +119,12 @@ export default function Dashboard() {
             {PRESETS.map((p) => (
               <button
                 key={p}
-                className={p === period && !customRange ? "period-btn active" : "period-btn"}
-                onClick={() => selectPreset(p)}
+                className={p === period ? "period-btn active" : "period-btn"}
+                onClick={() => setPeriod(p)}
               >
                 {PERIOD_LABELS[p]}
               </button>
             ))}
-          </div>
-
-          <div className="date-range-picker">
-            <input
-              type="date"
-              aria-label="Data inicial"
-              value={startInput}
-              max={endInput || undefined}
-              onChange={(e) => {
-                setStartInput(e.target.value);
-                applyCustomRange(e.target.value, endInput);
-              }}
-            />
-            <span className="date-range-sep">–</span>
-            <input
-              type="date"
-              aria-label="Data final"
-              value={endInput}
-              min={startInput || undefined}
-              onChange={(e) => {
-                setEndInput(e.target.value);
-                applyCustomRange(startInput, e.target.value);
-              }}
-            />
           </div>
 
           <button className="btn-ghost" onClick={() => window.print()}>
@@ -173,7 +136,12 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <AccumulatedBar spend={data?.accumulatedSpend} range={data?.accumulatedRange} loading={loading} />
+      <AccumulatedBar
+        spend={data?.accumulatedSpend ?? undefined}
+        range={data?.accumulatedRange}
+        hasError={!!data?.accumulatedError}
+        loading={loading}
+      />
 
       {data?.isPartial && (
         <p className="partial-warning">
@@ -227,23 +195,35 @@ export default function Dashboard() {
 function AccumulatedBar({
   spend,
   range,
+  hasError,
   loading,
 }: {
   spend?: number;
   range?: { start: string; end: string };
+  hasError: boolean;
   loading: boolean;
 }) {
+  const value = loading
+    ? "—"
+    : hasError
+      ? "indisponível"
+      : spend === undefined
+        ? "—"
+        : formatCurrency(spend);
+
   return (
     <section className="accumulated-bar">
       <div>
         <span className="accumulated-label">Gasto acumulado da campanha</span>
         <span className="accumulated-hint">
-          {range ? `Desde ${formatDateBR(range.start)} — controle para prestação de contas` : "Carregando…"}
+          {hasError
+            ? "Não foi possível calcular agora — tente recarregar em alguns instantes."
+            : range
+              ? `Desde ${formatDateBR(range.start)} — controle para prestação de contas`
+              : "Carregando…"}
         </span>
       </div>
-      <span className="accumulated-value">
-        {loading || spend === undefined ? "—" : formatCurrency(spend)}
-      </span>
+      <span className="accumulated-value">{value}</span>
     </section>
   );
 }

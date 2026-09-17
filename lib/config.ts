@@ -100,13 +100,13 @@ export function translateResultTitle(title: string | null | undefined): string |
 
 // Periodos disponiveis no seletor. Os presets de dias terminam sempre ONTEM;
 // "hoje" e o unico que mostra dado parcial.
-export type PeriodPreset = "today" | "7" | "14" | "30";
+export type PeriodPreset = "today" | "3" | "7" | "14";
 
 export const PERIOD_LABELS: Record<PeriodPreset, string> = {
   today: "Hoje",
+  "3": "3 dias",
   "7": "7 dias",
   "14": "14 dias",
-  "30": "30 dias",
 };
 
 // ---------------------------------------------------------------------------
