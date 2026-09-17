@@ -12,7 +12,7 @@ import {
 } from "@/lib/config";
 import { formatCurrency, formatDelta, formatNumber, formatPercent } from "@/lib/format";
 import { formatDateBR } from "@/lib/dates";
-import type { BlockResult, CampaignDisplayRow } from "@/lib/aggregate";
+import type { BlockResult, CampaignDisplayRow, HealthLevel } from "@/lib/aggregate";
 
 interface Totals {
   spend: number;
@@ -57,6 +57,12 @@ const BADGE_LABEL: Record<string, string> = {
   engajamento: "ENG",
   reconhecimento: "REC",
   video: "VÍDEO",
+};
+
+const HEALTH_ICON: Record<HealthLevel, string> = {
+  ok: "🟢",
+  watch: "🟡",
+  alert: "🔴",
 };
 
 export default function Dashboard() {
@@ -172,6 +178,8 @@ export default function Dashboard() {
           </div>
 
           <ObjectiveBreakdown blocks={data.blocks} />
+
+          <CreativeHealthSummary campaigns={data.campaigns} />
 
           <section className="account-section">
             <h2 className="account-title">
@@ -331,6 +339,50 @@ function ObjectiveCard({
   );
 }
 
+function CreativeHealthSummary({ campaigns }: { campaigns: CampaignDisplayRow[] }) {
+  const alerts = campaigns.filter((c) => c.health.level === "alert");
+  const watch = campaigns.filter((c) => c.health.level === "watch");
+
+  if (alerts.length === 0 && watch.length === 0) {
+    return (
+      <section className="health-summary health-summary-ok">
+        <span className="health-summary-icon">🟢</span>
+        <p>Nenhuma campanha pedindo troca de criativo neste período — frequência e custo por resultado dentro do esperado.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="health-summary health-summary-alert">
+      <h2 className="section-title">Saúde dos criativos</h2>
+      <p className="health-summary-hint">
+        Cruzamento de frequência semanal, CPM relativo ao bloco e variação do custo por resultado vs. período
+        anterior — veja o motivo de cada uma na tabela abaixo.
+      </p>
+      {alerts.length > 0 && (
+        <ul className="health-summary-list">
+          {alerts.map((c, i) => (
+            <li key={`${c.name}-${i}`}>
+              <span className="health-summary-icon">{HEALTH_ICON.alert}</span>
+              <strong>{c.name}</strong> — {c.health.reason}
+            </li>
+          ))}
+        </ul>
+      )}
+      {watch.length > 0 && (
+        <ul className="health-summary-list">
+          {watch.map((c, i) => (
+            <li key={`${c.name}-${i}`}>
+              <span className="health-summary-icon">{HEALTH_ICON.watch}</span>
+              <strong>{c.name}</strong> — {c.health.reason}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function CampaignTable({ campaigns }: { campaigns: CampaignDisplayRow[] }) {
   if (campaigns.length === 0) return null;
   return (
@@ -339,22 +391,27 @@ function CampaignTable({ campaigns }: { campaigns: CampaignDisplayRow[] }) {
         <thead>
           <tr>
             <th>Campanha</th>
+            <th title="Frequência semanal + CPM relativo ao bloco + custo por resultado vs. período anterior">Criativo</th>
             <th>Gasto</th>
             <th>Impressões</th>
             <th>Alcance</th>
             <th>Resultados</th>
             <th>Custo/Result.</th>
+            <th>Frequência</th>
             <th>CTR</th>
             <th>CPC</th>
             <th>CPM</th>
           </tr>
         </thead>
         <tbody>
-          {campaigns.map((c) => (
-            <tr key={c.name}>
+          {campaigns.map((c, i) => (
+            <tr key={`${c.name}-${i}`}>
               <td className="campaign-name-cell">
                 <span className={`badge badge-${c.blockId}`}>{BADGE_LABEL[c.blockId]}</span>
                 {c.name}
+              </td>
+              <td className="health-cell" title={c.health.reason}>
+                {HEALTH_ICON[c.health.level]}
               </td>
               <td>{formatCurrency(c.spend)}</td>
               <td>{formatNumber(c.impressions)}</td>
@@ -370,6 +427,7 @@ function CampaignTable({ campaigns }: { campaigns: CampaignDisplayRow[] }) {
                 )}
               </td>
               <td>{c.costPerResult !== null ? formatCurrency(c.costPerResult) : "—"}</td>
+              <td>{c.frequency.toFixed(2)}</td>
               <td>{formatPercent(c.ctr)}</td>
               <td>{formatCurrency(c.cpc)}</td>
               <td>{formatCurrency(c.cpm)}</td>

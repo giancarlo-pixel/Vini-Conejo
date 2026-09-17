@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildBlocks, buildCampaignDisplayRows } from "@/lib/aggregate";
 import { PERIOD_LABELS, type PeriodPreset } from "@/lib/config";
-import { getAccumulatedRange, getComparisonRange, getPeriodRange } from "@/lib/dates";
+import { daysBetween, getAccumulatedRange, getComparisonRange, getPeriodRange } from "@/lib/dates";
 import { getCampaignInsightsCached, ReporteiError } from "@/lib/reportei";
 import type { CampaignRow } from "@/lib/reportei";
 
@@ -53,7 +53,8 @@ export async function GET(request: NextRequest) {
     const comparisonRows = await getCampaignInsightsCached(comparisonRange.start, comparisonRange.end);
 
     const blocks = buildBlocks(currentRows, comparisonRows);
-    const campaigns = buildCampaignDisplayRows(currentRows);
+    const periodDays = daysBetween(range.start, range.end);
+    const campaigns = buildCampaignDisplayRows(currentRows, comparisonRows, periodDays);
     const totals = sumTotals(currentRows);
     const totalsComparison = sumTotals(comparisonRows);
 
