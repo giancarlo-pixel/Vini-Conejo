@@ -346,8 +346,11 @@ function CreativeHealthSummary({ campaigns }: { campaigns: CampaignDisplayRow[] 
   if (alerts.length === 0 && watch.length === 0) {
     return (
       <section className="health-summary health-summary-ok">
-        <span className="health-summary-icon">🟢</span>
-        <p>Nenhuma campanha pedindo troca de criativo neste período — frequência e custo por resultado dentro do esperado.</p>
+        <div className="health-summary-ok-row">
+          <span className="health-summary-icon">🟢</span>
+          <p>Nenhuma campanha pedindo troca de criativo neste período — frequência e custo por resultado dentro do esperado.</p>
+        </div>
+        <HealthLegend />
       </section>
     );
   }
@@ -375,7 +378,40 @@ function CreativeHealthSummary({ campaigns }: { campaigns: CampaignDisplayRow[] 
           ))}
         </ul>
       )}
+      <HealthLegend />
     </section>
+  );
+}
+
+function HealthLegend() {
+  return (
+    <details className="health-legend">
+      <summary>Como funciona esse selo?</summary>
+      <p>
+        Cruza 3 números: frequência semanal (quantas vezes em média a mesma pessoa viu o anúncio), CPM comparado
+        com as outras campanhas do mesmo bloco, e a variação do custo por resultado em relação ao período
+        anterior.
+      </p>
+      <ul>
+        <li>
+          <strong>🟢 Manter</strong> — frequência até 6x/semana, CPM até 30% acima da média do bloco, custo por
+          resultado estável.
+        </li>
+        <li>
+          <strong>🟡 Observar</strong> — frequência entre 6 e 8x/semana, ou CPM entre 30% e 60% acima da média do
+          bloco, ou custo por resultado subiu entre 15% e 25%.
+        </li>
+        <li>
+          <strong>🔴 Trocar/Desligar</strong> — frequência acima de 8x/semana, ou (frequência acima de 6x/semana
+          e custo por resultado subiu mais de 25%), ou (CPM 60%+ acima da média do bloco e custo subiu mais de
+          25%).
+        </li>
+      </ul>
+      <p className="health-legend-note">
+        A comparação de custo só entra quando a campanha já tinha gasto pelo menos R$ 50 no período anterior —
+        campanha muito nova (1-2 dias de rampa) tem custo artificialmente baixo e isso distorceria a conta.
+      </p>
+    </details>
   );
 }
 
