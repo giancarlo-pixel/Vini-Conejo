@@ -355,16 +355,12 @@ function CreativeHealthSummary({ campaigns }: { campaigns: CampaignDisplayRow[] 
   return (
     <section className="health-summary health-summary-alert">
       <h2 className="section-title">Saúde dos criativos</h2>
-      <p className="health-summary-hint">
-        Cruzamento de frequência semanal, CPM relativo ao bloco e variação do custo por resultado vs. período
-        anterior — veja o motivo de cada uma na tabela abaixo.
-      </p>
       {alerts.length > 0 && (
         <ul className="health-summary-list">
           {alerts.map((c, i) => (
-            <li key={`${c.name}-${i}`}>
+            <li key={`${c.name}-${i}`} title={c.health.reason}>
               <span className="health-summary-icon">{HEALTH_ICON.alert}</span>
-              <strong>{c.name}</strong> — {c.health.reason}
+              <strong>{c.name}</strong> — {c.health.label}
             </li>
           ))}
         </ul>
@@ -372,9 +368,9 @@ function CreativeHealthSummary({ campaigns }: { campaigns: CampaignDisplayRow[] 
       {watch.length > 0 && (
         <ul className="health-summary-list">
           {watch.map((c, i) => (
-            <li key={`${c.name}-${i}`}>
+            <li key={`${c.name}-${i}`} title={c.health.reason}>
               <span className="health-summary-icon">{HEALTH_ICON.watch}</span>
-              <strong>{c.name}</strong> — {c.health.reason}
+              <strong>{c.name}</strong> — {c.health.label}
             </li>
           ))}
         </ul>
@@ -410,8 +406,8 @@ function CampaignTable({ campaigns }: { campaigns: CampaignDisplayRow[] }) {
                 <span className={`badge badge-${c.blockId}`}>{BADGE_LABEL[c.blockId]}</span>
                 {c.name}
               </td>
-              <td className="health-cell" title={c.health.reason}>
-                {HEALTH_ICON[c.health.level]}
+              <td className={`health-cell health-cell-${c.health.level}`} title={c.health.reason}>
+                {HEALTH_ICON[c.health.level]} {c.health.label}
               </td>
               <td>{formatCurrency(c.spend)}</td>
               <td>{formatNumber(c.impressions)}</td>
