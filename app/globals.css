@@ -429,12 +429,6 @@ button {
   border-color: #f0b429;
 }
 
-.health-summary-hint {
-  margin: 0 0 8px;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
 .health-summary-list {
   list-style: none;
   margin: 0 0 4px;
@@ -454,8 +448,22 @@ button {
 }
 
 .health-cell {
-  text-align: center;
+  white-space: nowrap;
   cursor: help;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.health-cell-ok {
+  color: #2f8f3f;
+}
+
+.health-cell-watch {
+  color: #a8720a;
+}
+
+.health-cell-alert {
+  color: #c62828;
 }
 
 /* Conta e tabela de campanhas */

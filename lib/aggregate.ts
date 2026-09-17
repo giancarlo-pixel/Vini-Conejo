@@ -28,11 +28,19 @@ export type HealthLevel = "ok" | "watch" | "alert";
 
 export interface HealthSignal {
   level: HealthLevel;
+  /** Rotulo curto e direto pra exibir - "por que" fica so no title (hover), nao no texto principal. */
+  label: string;
   reason: string;
   weeklyFrequency: number;
   cpmVsBlockMedianPct: number | null;
   costPerResultChangePct: number | null;
 }
+
+export const HEALTH_LABEL: Record<HealthLevel, string> = {
+  ok: "Manter",
+  watch: "Observar",
+  alert: "Trocar/Desligar",
+};
 
 export interface CampaignDisplayRow {
   name: string;
@@ -200,7 +208,8 @@ function buildHealthSignal(
     else if (cpmTxt) parts.push(cpmTxt);
     return {
       level: "alert",
-      reason: `Trocar criativo: ${parts.join(" e ")} — sinal de saturação nesse público.`,
+      label: HEALTH_LABEL.alert,
+      reason: `${parts.join(" e ")} — sinal de saturação nesse público.`,
       weeklyFrequency,
       cpmVsBlockMedianPct,
       costPerResultChangePct,
@@ -214,7 +223,8 @@ function buildHealthSignal(
     if (costTxt && costWatch) parts.push(costTxt);
     return {
       level: "watch",
-      reason: `Observar: ${parts.join(", ")}.`,
+      label: HEALTH_LABEL.watch,
+      reason: parts.join(", "),
       weeklyFrequency,
       cpmVsBlockMedianPct,
       costPerResultChangePct,
@@ -223,6 +233,7 @@ function buildHealthSignal(
 
   return {
     level: "ok",
+    label: HEALTH_LABEL.ok,
     reason: "Frequência e custo dentro do esperado para reforço de marca.",
     weeklyFrequency,
     cpmVsBlockMedianPct,
